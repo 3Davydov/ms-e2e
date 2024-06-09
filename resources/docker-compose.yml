@@ -1,0 +1,38 @@
+services:
+  payment:
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    build: ../../payment/
+    environment:
+      APPLICATION_PORT: 6970
+      ENV: "development"
+      DATA_SOURCE_URL: "postgresql://postgres:s3cr3t@127.0.0.1:5432/payments"
+  order:
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    build: ../../order/
+    ports:
+      - "6969:6969"
+    environment:
+      APPLICATION_PORT: 6969
+      ENV: "development"
+      DATA_SOURCE_URL: "postgresql://postgres:s3cr3t@127.0.0.1:5432/orders"
+      PAYMENT_SERVICE_URL: "payment:6970"
+  postgresql:
+    image: "postgres:15.2"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "s3cr3t"
+      POSTGRES_DB: "orders"
+    volumes:
+      - "./init.sql:/docker-entrypoint-initdb.d/init.sql"
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+volumes:
+  pgdata:
