@@ -1,5 +1,6 @@
 services:
   payment:
+    container_name: payment-container
     depends_on:
       postgresql:
         condition: service_healthy
@@ -7,8 +8,9 @@ services:
     environment:
       APPLICATION_PORT: 6970
       ENV: "development"
-      DATA_SOURCE_URL: "postgresql://postgres:s3cr3t@127.0.0.1:5432/payments"
+      DATA_SOURCE_URL: "postgresql://postgres:s3cr3t@postgres-container:5432/payments"
   order:
+    container_name: order-container
     depends_on:
       postgresql:
         condition: service_healthy
@@ -18,17 +20,27 @@ services:
     environment:
       APPLICATION_PORT: 6969
       ENV: "development"
-      DATA_SOURCE_URL: "postgresql://postgres:s3cr3t@127.0.0.1:5432/orders"
-      PAYMENT_SERVICE_URL: "payment:6970"
+      DATA_SOURCE_URL: "postgresql://postgres:s3cr3t@postgres-container:5432/orders"
+      PAYMENT_SERVICE_URL: "payment-container:6970"
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:6969"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
   postgresql:
+    container_name: postgres-container
     image: "postgres:15.2"
+    ports:
+      - "5432:5432"
+    volumes:
+      - "./init.sql:/docker-entrypoint-initdb.d/init.sql"
+      # - docker-postgresql-multiple-databases:/docker-entrypoint-initdb.d
+      - pgdata:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "s3cr3t"
       POSTGRES_DB: "orders"
-    volumes:
-      - "./init.sql:/docker-entrypoint-initdb.d/init.sql"
-      - pgdata:/var/lib/postgresql/data
+      # POSTGRES_MULTIPLE_DATABASES: orders, payments
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s

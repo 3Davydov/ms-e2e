@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"testing"
+	"time"
 
 	"github.com/3Davydov/ms-proto/golang/order"
 	"github.com/stretchr/testify/suite"
@@ -34,12 +35,13 @@ func (c *CreateOrderTestSuite) SetupSuite() {
 	if upErr != nil {
 		log.Fatalf("failed to bring up docker compose: %v", upErr)
 	}
+	time.Sleep(5 * time.Second)
 }
 
 func (c *CreateOrderTestSuite) Test_Should_Create_Order() {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	conn, err := grpc.NewClient("6969", opts...)
+	conn, err := grpc.NewClient("localhost:6969", opts...)
 	if err != nil {
 		log.Fatalf("Failed to connect order service. Err: %v", err)
 	}
@@ -57,6 +59,8 @@ func (c *CreateOrderTestSuite) Test_Should_Create_Order() {
 			},
 		},
 	})
+	log.Println("ERR CREATE")
+	log.Println(errCreate)
 	c.Nil(errCreate)
 
 	getOrderResponse, errGet := orderClient.Get(context.Background(), &order.GetOrderRequest{OrderId: createOrderResponse.OrderId})
